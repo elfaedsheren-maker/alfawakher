@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>الفواخر - نظام المبيعات</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:Tahoma,Arial}
+body{background:#f6f3eb;color:#1a2e1a}
+header{background:#0f3d2e;color:white;padding:16px;position:sticky;top:0;z-index:10}
+header h1{font-size:20px}
+header p{font-size:12px;opacity:.8;margin-top:4px}
+.container{max-width:900px;margin:0 auto;padding:16px}
+.card{background:white;border-radius:16px;padding:16px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.products{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.prod{border:1px solid #e8e0d0;border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.prod .emoji{font-size:32px}
+.prod h3{font-size:14px}
+.prod .price{font-weight:bold;color:#0f3d2e}
+.btn{background:#0f3d2e;color:white;border:0;padding:10px 16px;border-radius:10px;font-weight:bold;cursor:pointer;width:100%}
+.btn-gold{background:#c8a951;color:#1a2e1a}
+input,select,textarea{width:100%;padding:12px;border:1px solid #ddd;border-radius:10px;margin-bottom:10px;font-size:14px}
+.cart-bar{position:fixed;bottom:0;left:0;right:0;background:white;border-top:2px solid #0f3d2e;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;z-index:20}
+.badge{background:#c8a951;color:black;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:bold}
+.hidden{display:none}
+.order{border-right:4px solid #0f3d2e}
+.status{padding:4px 8px;border-radius:6px;font-size:11px;font-weight:bold}
+.pending{background:#fef9c3;color:#a16207}
+.delivered{background:#dcfce7;color:#166534}
+</style>
+</head>
+<body>
+<header>
+<h1>🌾 الفواخر - Alfawakher</h1>
+<p>نظام مبيعات احترافي - مربوط بـ Firebase Realtime</p>
+</header>
+<div class="container">
+<div class="card">
+<h2 style="margin-bottom:10px">📦 المنتجات</h2>
+<div id="products" class="products"></div>
+</div>
+<div class="card">
+<h2 style="margin-bottom:10px">🛒 تسجيل أوردر جديد</h2>
+<input id="custName" placeholder="اسم العميل">
+<input id="custPhone" placeholder="رقم التليفون">
+<input id="custAddr" placeholder="العنوان - المنطقة">
+<select id="repName"><option>أحمد - القاهرة</option><option>محمد - اسكندرية</option><option>خالد - المنصورة</option></select>
+<textarea id="notes" placeholder="ملاحظات"></textarea>
+<div id="cartPreview" style="margin:10px 0;font-size:13px"></div>
+<div style="font-weight:bold;margin-bottom:10px">الإجمالي: <span id="total">0</span> جنيه</div>
+<button class="btn btn-gold" onclick="submitOrder()">✅ تأكيد الأوردر وإرساله</button>
+<div id="msg" style="margin-top:10px;font-weight:bold"></div>
+</div>
+<div class="card">
+<h2>📊 آخر الأوردرات</h2>
+<div id="orders"></div>
+</div>
+</div>
+<div class="cart-bar">
+<div>🛒 السلة: <span id="cartCount">0</span> منتج</div>
+<div>الإجمالي: <span id="cartTotal">0</span> ج</div>
+</div>
+<script>
+const DB_URL="https://alfawakher-76330-default-rtdb.europe-west1.firebasedatabase.app";
+const PRODUCTS=[
+{id:"p1",name:"أرز الفواخر الفاخر 25 كجم",price:850,unit:"شيكارة",emoji:"🌾"},
+{id:"p2",name:"سكر أبيض نقي 10 كجم",price:210,unit:"شيكارة",emoji:"🍬"},
+{id:"p3",name:"زيت عباد الشمس 5 لتر",price:320,unit:"جركن",emoji:"🫒"},
+{id:"p4",name:"مكرونة الفواخر 400جم - كرتونة 20",price:180,unit:"كرتونة",emoji:"🍝"},
+{id:"p5",name:"سمن بلدي فاخر 2 كجم",price:450,unit:"علبة",emoji:"🧈"},
+{id:"p6",name:"دقيق فاخر 25 كجم",price:420,unit:"شيكارة",emoji:"🌻"}
+];
+let cart=[];
+function renderProducts(){
+ const el=document.getElementById("products");
+ el.innerHTML=PRODUCTS.map(p=>`<div class="prod"><div class="emoji">${p.emoji}</div><h3>${p.name}</h3><div class="price">${p.price} ج / ${p.unit}</div><button class="btn" onclick="addToCart('${p.id}')">إضافة للسلة +</button></div>`).join("");
+}
+function addToCart(id){
+ const prod=PRODUCTS.find(x=>x.id===id);
+ let item=cart.find(x=>x.id===id);
+ if(item) item.qty++; else cart.push({...prod,qty:1});
+ updateCart();
+}
+function updateCart(){
+ document.getElementById("cartCount").textContent=cart.reduce((s,i)=>s+i.qty,0);
+ const total=cart.reduce((s,i)=>s+i.price*i.qty,0);
+ document.getElementById("cartTotal").textContent=total;
+ document.getElementById("total").textContent=total;
+ document.getElementById("cartPreview").innerHTML=cart.map(i=>`${i.emoji} ${i.name} × ${i.qty} = ${i.price*i.qty} ج <button onclick="removeFromCart('${i.id}')" style="color:red;border:0;background:0">✕</button>`).join("<br>") || "السلة فارغة";
+}
+function removeFromCart(id){ cart=cart.filter(x=>x.id!==id); updateCart(); }
+async function submitOrder(){
+ const name=document.getElementById("custName").value.trim();
+ const phone=document.getElementById("custPhone").value.trim();
+ const addr=document.getElementById("custAddr").value.trim();
+ if(!name||!phone||cart.length===0){ document.getElementById("msg").textContent="❌ اكمل البيانات والسلة"; return; }
+ const total=cart.reduce((s,i)=>s+i.price*i.qty,0);
+ const order={
+  customerName:name,phone,address:addr,
+  rep:document.getElementById("repName").value,
+  items:cart.map(i=>({name:i.name,price:i.price,qty:i.qty,id:i.id})),
+  total,commission:Math.round(total*0.05),
+  status:"pending",createdAt:Date.now(),
+  notes:document.getElementById("notes").value
+ };
+ document.getElementById("msg").textContent="⏳ جاري الإرسال...";
+ try{
+  const res=await fetch(DB_URL+"/orders.json",{method:"POST",body:JSON.stringify(order),headers:{"Content-Type":"application/json"}});
+  const data=await res.json();
+  document.getElementById("msg").textContent="✅ تم تسجيل الأوردر بنجاح - كود: "+data.name;
+  cart=[]; updateCart(); loadOrders();
+  document.getElementById("custName").value="";document.getElementById("custPhone").value="";document.getElementById("custAddr").value="";
+ }catch(e){ document.getElementById("msg").textContent="❌ خطأ في الاتصال، جرب تاني"; }
+}
+async function loadOrders(){
+ try{
+  const r=await fetch(DB_URL+"/orders.json?orderBy=%22createdAt%22&limitToLast=20");
+  const data=await r.json();
+  if(!data){document.getElementById("orders").innerHTML="لا يوجد أوردرات بعد";return;}
+  const list=Object.entries(data).map(([id,v])=>({id,...v})).sort((a,b)=>b.createdAt-a.createdAt);
+  document.getElementById("orders").innerHTML=list.map(o=>`<div class="card order"><div style="display:flex;justify-content:space-between"><b>${o.customerName}</b><span class="status pending">${o.status}</span></div><div style="font-size:12px;color:#666;margin:4px 0">${o.phone} - ${o.address} - ${o.rep}</div><div style="font-size:12px">${o.items.map(i=>i.name+" × "+i.qty).join(" ، ")}</div><div style="font-weight:bold;margin-top:4px">${o.total} ج - عمولة ${o.commission} ج</div></div>`).join("");
+ }catch(e){ document.getElementById("orders").innerHTML="خطأ تحميل"; }
+}
+renderProducts(); updateCart(); loadOrders();
+setInterval(loadOrders,8000);
+</script>
+</body>
+</html>
