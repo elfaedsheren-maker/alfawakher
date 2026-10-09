@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>الفواخر - نظام مبيعات الزيتون</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:Tahoma,Arial}
+body{background:#f6f3eb;color:#1a2e1a}
+header{background:#0f3d2e;color:white;padding:16px;position:sticky;top:0;z-index:10}
+header h1{font-size:20px}
+header p{font-size:12px;opacity:.8;margin-top:4px}
+.container{max-width:1100px;margin:0 auto;padding:16px}
+.card{background:white;border-radius:16px;padding:16px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.products{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+.prod{border:1px solid #e8e0d0;border-radius:14px;padding:12px;display:flex;flex-direction:column;background:white;transition:.2s}
+.prod:hover{transform:translateY(-3px);box-shadow:0 6px 18px rgba(0,0,0,.1)}
+.prod img{width:100%;height:160px;object-fit:contain;background:#faf7f0;border-radius:10px;margin-bottom:8px}
+.prod h3{font-size:14px;min-height:36px}
+.prod .size{font-size:11px;color:#8a7d6a;background:#f6f3eb;padding:3px 8px;border-radius:20px;display:inline-block;margin:4px 0}
+.prod .price{font-weight:bold;color:#0f3d2e;font-size:15px;margin:6px 0}
+.prod .desc{font-size:11px;color:#666;margin-bottom:8px}
+.btn{background:#0f3d2e;color:white;border:0;padding:10px 16px;border-radius:10px;cursor:pointer;font-weight:bold;width:100%}
+.btn-gold{background:#c8a951;color:#1a2e1a}
+.btn-gold:hover{background:#b8963e}
+input,select,textarea{width:100%;padding:12px;border:1px solid #ddd;border-radius:10px;margin-bottom:10px;font-size:14px}
+.cart-bar{position:fixed;bottom:0;left:0;right:0;background:white;border-top:2px solid #0f3d2e;padding:10px 16px;display:flex;justify-content:space-between;z-index:20;font-weight:bold}
+.badge{background:#c8a951;color:black;padding:4px 10px;border-radius:20px;font-size:12px}
+.hidden{display:none}
+.filter-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.filter-btn{padding:8px 14px;border-radius:20px;border:1px solid #0f3d2e;background:white;cursor:pointer;font-size:12px}
+.filter-btn.active{background:#0f3d2e;color:white}
+.order{border-right:4px solid #0f3d2e;padding:10px;background:#fafaf6;margin-bottom:8px;border-radius:8px}
+.status{padding:4px 8px;border-radius:6px;font-size:11px;font-weight:bold}
+.pending{background:#fef9c3;color:#a16207}
+.delivered{background:#dcfce7;color:#166534}
+</style>
+</head>
+<body>
+<header>
+<h1>🫒 الفواخر - Alfawakher</h1>
+<p>نظام مبيعات مندوب - زيتون فاخر - عمولة المندوب 2% - أسعار 2025</p>
+</header>
+<div class="container">
+<div class="card">
+<h2 style="margin-bottom:10px">🫒 أنواع الزيتون - الفواخر</h2>
+<div class="filter-bar">
+<button class="filter-btn active" onclick="filterProducts('all')">الكل</button>
+<button class="filter-btn" onclick="filterProducts('اخضر سليم')">أخضر سليم</button>
+<button class="filter-btn" onclick="filterProducts('مخلي')">أخضر مخلي</button>
+<button class="filter-btn" onclick="filterProducts('شرائح')">شرائح</button>
+<button class="filter-btn" onclick="filterProducts('كلاماتا')">أسود كلاماتا</button>
+<button class="filter-btn" onclick="filterProducts('اسباني')">أسود إسباني</button>
+</div>
+<div id="products" class="products"></div>
+</div>
+<div class="card">
+<h2 style="margin-bottom:10px">🛒 تسجيل أوردر جديد</h2>
+<input id="custName" placeholder="اسم العميل">
+<input id="custPhone" placeholder="رقم التليفون">
+<input id="custAddr" placeholder="العنوان - المنطقة">
+<select id="repName"><option>أحمد - القاهرة</option><option>اسكندرية - محمد</option><option>الدلتا - محمود</option><option>الصعيد - حسين</option></select>
+<textarea id="notes" placeholder="ملاحظات"></textarea>
+<div id="cartPreview" style="margin:10px 0;font-size:13px"></div>
+<div style="font-weight:bold;margin-bottom:10px">الإجمالي: <span id="total">0</span> جنيه | عمولة المندوب (2%): <span id="comm">0</span> جنيه</div>
+<button class="btn btn-gold" onclick="submitOrder()">📦 تأكيد الأوردر وإرساله</button>
+<div id="msg" style="margin-top:10px;font-weight:bold"></div>
+</div>
+<div class="card">
+<h2>📋 آخر الأوردرات</h2>
+<div id="orders"></div>
+</div>
+</div>
+<div class="cart-bar">
+<div>🛒 السلة: <span id="cartCount">0</span> منتج</div>
+<div>الإجمالي: <span id="cartTotal">0</span> جنيه</div>
+</div>
+<script>
+const DB_URL="https://alfawakher-76330-default-rtdb.europe-west1.firebasedatabase.app";
+const PRODUCTS=[
+{id:"g1_250",name:"زيتون أخضر سليم - الفواخر",size:"250 جم",price:45,unit:"برطمان",emoji:"🫒",image:"olive_green_whole.png",type:"اخضر سليم",desc:"زيتون أخضر سليم فاخر - الفواخر"},
+{id:"g1_650",name:"زيتون أخضر سليم - الفواخر",size:"650 جم",price:85,unit:"برطمان",emoji:"🫒",image:"olive_green_whole.png",type:"اخضر سليم",desc:"عبوة اقتصادية 650جم"},
+{id:"g1_1000",name:"زيتون أخضر سليم - الفواخر",size:"1000 جم",price:130,unit:"كيلو",emoji:"🫒",image:"olive_green_whole.png",type:"اخضر سليم",desc:"كيلو كامل - أوفر"},
+{id:"g1_2000",name:"زيتون أخضر سليم - الفواخر",size:"2000 جم",price:250,unit:"2 كيلو",emoji:"🫒",image:"olive_green_whole.png",type:"اخضر سليم",desc:"جردل 2 كيلو للمحلات"},
+{id:"g1_3000",name:"زيتون أخضر سليم - الفواخر",size:"3000 جم",price:360,unit:"3 كيلو",emoji:"🫒",image:"olive_green_whole.png",type:"اخضر سليم",desc:"جردل 3 كيلو - مطاعم"},
+
+{id:"g2_250",name:"زيتون أخضر مخلي - الفواخر",size:"250 جم",price:50,unit:"برطمان",emoji:"🫒",image:"olive_green_pitted2.png",type:"مخلي",desc:"أخضر مخلي - سهل الأكل"},
+{id:"g2_650",name:"زيتون أخضر مخلي - الفواخر",size:"650 جم",price:95,unit:"برطمان",emoji:"🫒",image:"olive_green_pitted2.png",type:"مخلي",desc:"مخلي 650جم"},
+{id:"g2_1000",name:"زيتون أخضر مخلي - الفواخر",size:"1000 جم",price:145,unit:"كيلو",emoji:"🫒",image:"olive_green_pitted2.png",type:"مخلي",desc:"مخلي كيلو"},
+{id:"g2_2000",name:"زيتون أخضر مخلي - الفواخر",size:"2000 جم",price:280,unit:"2 كيلو",emoji:"🫒",image:"olive_green_pitted2.png",type:"مخلي",desc:"جردل مخلي 2ك"},
+{id:"g2_3000",name:"زيتون أخضر مخلي - الفواخر",size:"3000 جم",price:400,unit:"3 كيلو",emoji:"🫒",image:"olive_green_pitted2.png",type:"مخلي",desc:"جردل مخلي 3ك"},
+
+{id:"g3_250",name:"زيتون أخضر شرائح - الفواخر",size:"250 جم",price:48,unit:"برطمان",emoji:"🫒",image:"olive_green_sliced.png",type:"شرائح",desc:"شرائح للبيتزا والسلطة"},
+{id:"g3_650",name:"زيتون أخضر شرائح - الفواخر",size:"650 جم",price:90,unit:"برطمان",emoji:"🫒",image:"olive_green_sliced.png",type:"شرائح",desc:"شرائح 650جم"},
+{id:"g3_1000",name:"زيتون أخضر شرائح - الفواخر",size:"1000 جم",price:140,unit:"كيلو",emoji:"🫒",image:"olive_green_sliced.png",type:"شرائح",desc:"شرائح كيلو"},
+{id:"g3_2000",name:"زيتون أخضر شرائح - الفواخر",size:"2000 جم",price:270,unit:"2 كيلو",emoji:"🫒",image:"olive_green_sliced.png",type:"شرائح",desc:"شرائح 2ك"},
+{id:"g3_3000",name:"زيتون أخضر شرائح - الفواخر",size:"3000 جم",price:390,unit:"3 كيلو",emoji:"🫒",image:"olive_green_sliced.png",type:"شرائح",desc:"شرائح 3ك"},
+
+{id:"b1_250",name:"زيتون أسود كلاماتا سليم - الفواخر",size:"250 جم",price:65,unit:"برطمان",emoji:"🫒",image:"olive_black_spanish.png",type:"كلاماتا",desc:"كلاماتا يوناني فاخر سليم"},
+{id:"b1_650",name:"زيتون أسود كلاماتا سليم - الفواخر",size:"650 جم",price:115,unit:"برطمان",emoji:"🫒",image:"olive_black_spanish.png",type:"كلاماتا",desc:"كلاماتا 650جم"},
+{id:"b1_1000",name:"زيتون أسود كلاماتا سليم - الفواخر",size:"1000 جم",price:180,unit:"كيلو",emoji:"🫒",image:"olive_black_spanish.png",type:"كلاماتا",desc:"كلاماتا كيلو"},
+{id:"b1_2000",name:"زيتون أسود كلاماتا سليم - الفواخر",size:"2000 جم",price:340,unit:"2 كيلو",emoji:"🫒",image:"olive_black_spanish.png",type:"كلاماتا",desc:"كلاماتا 2ك"},
+{id:"b1_3000",name:"زيتون أسود كلاماتا سليم - الفواخر",size:"3000 جم",price:490,unit:"3 كيلو",emoji:"🫒",image:"olive_black_spanish.png",type:"كلاماتا",desc:"كلاماتا 3ك"},
+
+{id:"b2_250",name:"زيتون أسود إسباني - الفواخر",size:"250 جم",price:60,unit:"برطمان",emoji:"🫒",image:"olive_black_spanish.png",type:"اسباني",desc:"إسباني فاخر سليم"},
+{id:"b2_650",name:"زيتون أسود إسباني - الفواخر",size:"650 جم",price:105,unit:"برطمان",emoji:"🫒",image:"olive_black_spanish.png",type:"اسباني",desc:"إسباني 650جم"},
+{id:"b2_1000",name:"زيتون أسود إسباني - الفواخر",size:"1000 جم",price:165,unit:"كيلو",emoji:"🫒",image:"olive_black_spanish.png",type:"اسباني",desc:"إسباني كيلو"},
+{id:"b2_2000",name:"زيتون أسود إسباني - الفواخر",size:"2000 جم",price:310,unit:"2 كيلو",emoji:"🫒",image:"olive_black_spanish.png",type:"اسباني",desc:"إسباني 2ك"},
+{id:"b2_3000",name:"زيتون أسود إسباني - الفواخر",size:"3000 جم",price:450,unit:"3 كيلو",emoji:"🫒",image:"olive_black_spanish.png",type:"اسباني",desc:"إسباني 3ك"}
+];
+let cart=[];
+let currentFilter='all';
+function filterProducts(type){
+currentFilter=type;
+document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+event.target.classList.add('active');
+renderProducts();
+}
+function renderProducts(){
+const el=document.getElementById("products");
+let list=currentFilter==='all'?PRODUCTS:PRODUCTS.filter(p=>p.type.includes(currentFilter));
+el.innerHTML=list.map(p=>`<div class="prod">
+${p.image?`<img src="${p.image}" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><div style="display:none;font-size:48px;text-align:center">${p.emoji}</div>`:`<div style="font-size:42px;text-align:center">${p.emoji}</div>`}
+<h3>${p.name}</h3>
+<span class="size">${p.size} - ${p.type}</span>
+<p class="desc">${p.desc}</p>
+<div class="price">${p.price} جنيه / ${p.unit}</div>
+<button class="btn btn-gold" onclick="addToCart('${p.id}')">إضافة للسلة</button>
+</div>`).join('');
+}
+function addToCart(id){
+const prod=PRODUCTS.find(x=>x.id===id);
+let item=cart.find(x=>x.id===id);
+if(item) item.qty++; else cart.push({...prod,qty:1});
+updateCart();
+}
+function updateCart(){
+document.getElementById("cartCount").textContent=cart.reduce((s,i)=>s+i.qty,0);
+const total=cart.reduce((s,i)=>s+i.price*i.qty,0);
+document.getElementById("cartTotal").textContent=total;
+document.getElementById("total").textContent=total;
+document.getElementById("comm").textContent=Math.round(total*0.02);
+document.getElementById("cartPreview").innerHTML=cart.map(i=>`${i.emoji} ${i.name} ${i.size} x${i.qty} = ${i.price*i.qty}ج <button onclick="removeFromCart('${i.id}')" style="color:red;border:0;background:0;cursor:pointer">❌</button>`).join('<br>');
+}
+function removeFromCart(id){cart=cart.filter(x=>x.id!==id); updateCart();}
+async function submitOrder(){
+const name=document.getElementById("custName").value.trim();
+const phone=document.getElementById("custPhone").value.trim();
+const addr=document.getElementById("custAddr").value.trim();
+if(!name||!phone||cart.length===0){ document.getElementById("msg").textContent="❌ اكتب اسم العميل ورقم التليفون واختار منتجات"; return;}
+const total=cart.reduce((s,i)=>s+i.price*i.qty,0);
+const order={
+customerName:name,phone,address:addr,
+rep:document.getElementById("repName").value,
+items:cart.map(i=>({name:i.name,size:i.size,type:i.type,price:i.price,qty:i.qty,id:i.id})),
+total,commission:Math.round(total*0.02),
+status:"pending",createdAt:Date.now(),
+notes:document.getElementById("notes").value
+};
+document.getElementById("msg").textContent="⏳ جاري الإرسال...";
+try{
+const res=await fetch(DB_URL+"/orders.json",{method:"POST",body:JSON.stringify(order)});
+const data=await res.json();
+document.getElementById("msg").textContent="✅ تم إرسال الأوردر بنجاح - كود: "+data.name;
+cart=[]; updateCart(); loadOrders();
+document.getElementById("custName").value="";document.getElementById("custPhone").value="";document.getElementById("custAddr").value="";document.getElementById("notes").value="";
+}catch(e){ document.getElementById("msg").textContent="❌ خطأ جرب تاني";}
+}
+async function loadOrders(){
+try{
+const r=await fetch(DB_URL+"/orders.json");
+const data=await r.json();
+if(!data){document.getElementById("orders").innerHTML="لا يوجد أوردرات بعد";return;}
+const list=Object.entries(data).map(([id,v])=>({id,...v})).sort((a,b)=>b.createdAt-a.createdAt).slice(0,20);
+document.getElementById("orders").innerHTML=list.map(o=>`<div class="order"><b>${o.customerName}</b> - ${o.phone} <span class="status pending">${o.status}</span><br><small>${new Date(o.createdAt).toLocaleString('ar-EG')} - ${o.rep}</small><br>${o.items.map(i=>`${i.name} ${i.size} x${i.qty}`).join(', ')}<br><b>الإجمالي: ${o.total}ج - العمولة: ${o.commission}ج (2%)</b></div>`).join('');
+}catch(e){ document.getElementById("orders").innerHTML="خطأ تحميل";}
+}
+renderProducts(); updateCart(); loadOrders();
+setInterval(loadOrders,8000);
+console.log("Products:",PRODUCTS.length);
+</script>
+</body>
+</html>
