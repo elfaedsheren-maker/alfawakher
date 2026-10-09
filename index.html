@@ -114,7 +114,7 @@ async function submitOrder(){
 }
 async function loadOrders(){
  try{
-  const r=await fetch(DB_URL+"/orders.json?orderBy="createdAt"&limitToLast=20");
+  const r=await fetch(DB_URL+"/orders.json");
   const data=await r.json();
   if(!data){document.getElementById("orders").innerHTML="لا يوجد أوردرات بعد";return;}
   const list=Object.entries(data).map(([id,v])=>({id,...v})).sort((a,b)=>b.createdAt-a.createdAt);
@@ -123,6 +123,7 @@ async function loadOrders(){
 }
 renderProducts(); updateCart(); loadOrders();
 setInterval(loadOrders,8000);
+console.log("Products:",PRODUCTS.length);
 </script>
 </body>
 </html>
